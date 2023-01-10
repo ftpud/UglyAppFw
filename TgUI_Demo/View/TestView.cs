@@ -20,7 +20,7 @@ public class TestView : IView
 
 
         return new ViewSimpleResponse(
-            @$"Приветствую лол кек чебурек.
+@$"Hello world.
 UserId: {testViewModel.ctx.CurrentUserId}
 Private value {testViewModel.someValue} /decrease /increase
 Shared value {TestModel.SharedValue}

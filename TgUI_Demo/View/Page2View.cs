@@ -16,16 +16,15 @@ public class Page2View : IView
             {
                 new ResponseData()
                 {
-                    text = @$"Это страница 2. {testViewModel.data}",
+                    text = @$"Page 2. {testViewModel.data}",
                     replyMarkup = ViewHelper.ButtonBuilder
                         .Create()
                         .Add("o_O", "/change")
                         .Build()
                 },
                 new ResponseData()
-                {
-                    text = @$"👀 /change
-Назад: /back",
+                { 
+                    text = @$"👀 /change /back",
                     replyMarkup = ViewHelper.ButtonBuilder
                         .Create()
                         .Add("back", "/back")
