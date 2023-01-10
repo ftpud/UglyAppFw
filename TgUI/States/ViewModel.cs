@@ -3,7 +3,7 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TgUI.Attributes;
 
-namespace TgUI.Entity;
+namespace TgUI.States;
 
 public class ViewModel : State
 {

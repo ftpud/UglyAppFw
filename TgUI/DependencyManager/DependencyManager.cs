@@ -1,9 +1,10 @@
 ﻿using System.Reflection;
 using TgUI.Attributes;
-using TgUI.Entity;
+using TgUI.DependencyManager.Attributes;
+using TgUI.States;
 using TgUI.View;
 
-namespace TgUI;
+namespace TgUI.DependencyManager;
 
 [Managed]
 public class DependencyManager

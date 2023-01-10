@@ -1,4 +1,4 @@
-﻿using TgUI.Entity;
+﻿using TgUI.States;
 
 namespace TgUI.View;
 

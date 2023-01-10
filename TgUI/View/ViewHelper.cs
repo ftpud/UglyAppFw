@@ -2,9 +2,9 @@
 
 namespace TgUI.View;
 
-public class ViewHelper
+public static class ViewHelper
 {
-    public class ButtonBuilder
+    public static class ButtonBuilder
     {
         public static ButtonBuilderWith Create()
         {

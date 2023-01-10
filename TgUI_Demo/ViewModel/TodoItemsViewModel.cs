@@ -2,12 +2,13 @@
 using TgUI_Demo.Model;
 using TgUI_Demo.View;
 using TgUI.Attributes;
+using TgUI.DependencyManager.Attributes;
 using TgUIForm.Elements;
 
 namespace TgUI_Demo.ViewModel;
 
 [BindView(typeof(TodoItemsView))]
-public class TodoItemsViewModel : TgUI.Entity.ViewModel
+public class TodoItemsViewModel : TgUI.States.ViewModel
 {
     [Inject]
     internal ItemRepository _repository { get; set; }

@@ -1,6 +1,8 @@
 ﻿using Telegram.Bot;
 using TgUI.Attributes;
+using TgUI.DependencyManager.Attributes;
 using TgUI.Entity;
+using TgUI.States;
 using TgUI.View;
 
 namespace TgUI;
@@ -10,7 +12,7 @@ public class StateManager
     private SessionManager _sessionManager;
     private TelegramBotClient _telegramBotClient { get; set; }
 
-    [Inject] private DependencyManager _dependencyManager { get; set; }
+    [Inject] private DependencyManager.DependencyManager _dependencyManager { get; set; }
 
     public StateManager(TelegramBotClient telegramBotClient)
     {

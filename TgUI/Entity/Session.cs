@@ -1,4 +1,6 @@
-﻿namespace TgUI.Entity;
+﻿using TgUI.States;
+
+namespace TgUI.Entity;
 
 public class Session
 {

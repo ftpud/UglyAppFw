@@ -1,4 +1,5 @@
 ﻿using TgUI.Attributes;
+using TgUI.DependencyManager.Attributes;
 
 namespace TgUI_Demo.Model;
 

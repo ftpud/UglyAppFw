@@ -6,7 +6,7 @@ using TgUI.Attributes;
 namespace TgUI_Demo.ViewModel;
 
 [BindView(view: typeof(MainPageView))]
-public class MainPageViewModel : TgUI.Entity.ViewModel
+public class MainPageViewModel : TgUI.States.ViewModel
 {
     [Callback(Trigger = "/start")]
     public void Controller(Update update)

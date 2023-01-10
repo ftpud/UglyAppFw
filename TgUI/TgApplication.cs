@@ -1,7 +1,7 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
-using TgUI.Entity;
+using TgUI.States;
 
 namespace TgUI;
 
@@ -12,7 +12,7 @@ public class TgApplication
     private SessionManager _sessionManager;
     private StateManager _stateManager;
     
-    private DependencyManager _dependencyManager;
+    private DependencyManager.DependencyManager _dependencyManager;
     
     public TgApplication(String token, Type startingState)
     {
@@ -20,7 +20,7 @@ public class TgApplication
         _startingState = startingState;
         _sessionManager = new SessionManager();
         _stateManager = new StateManager(_telegramBotClient);
-        _dependencyManager = new DependencyManager();
+        _dependencyManager = new DependencyManager.DependencyManager();
         _dependencyManager.InjectDependencies(_stateManager);
     }
 

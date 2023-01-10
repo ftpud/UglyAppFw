@@ -1,6 +1,6 @@
-﻿namespace TgUI.Attributes;
+﻿namespace TgUI.DependencyManager.Attributes;
 
-[System.AttributeUsage(System.AttributeTargets.Property)]
+[AttributeUsage(AttributeTargets.Property)]
 public class InjectAttribute : Attribute
 {
     

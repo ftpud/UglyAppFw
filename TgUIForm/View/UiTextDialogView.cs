@@ -1,7 +1,8 @@
-﻿using TgUI.Entity;
+﻿using TgUI.States;
 using TgUI.View;
+using TgUIForm.Elements;
 
-namespace TgUIForm.Elements;
+namespace TgUIForm.View;
 
 public class UiTextDialogView : IView
 {

@@ -1,6 +1,7 @@
 ﻿using Telegram.Bot.Types;
+using TgUI.Entity;
 
-namespace TgUI.Entity;
+namespace TgUI.States;
 
 public class State
 {

@@ -1,6 +1,4 @@
-﻿using TgUI.View;
-
-namespace TgUI.Attributes;
+﻿namespace TgUI.Attributes;
 
 [System.AttributeUsage(System.AttributeTargets.Class)]
 public class BindViewAttribute : Attribute
