@@ -1,0 +1,28 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TgUI", "TgUI\TgUI.csproj", "{C2B706D6-CD6C-4A2F-97AE-A4CEDB2B0636}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TgUI_Demo", "TgUI_Demo\TgUI_Demo.csproj", "{C455D228-C865-4D4A-8661-D4B01D114BC3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TgUIForm", "TgUIForm\TgUIForm.csproj", "{A8AFF98E-4312-46C5-8075-4D3ECF164153}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C2B706D6-CD6C-4A2F-97AE-A4CEDB2B0636}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C2B706D6-CD6C-4A2F-97AE-A4CEDB2B0636}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C2B706D6-CD6C-4A2F-97AE-A4CEDB2B0636}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C2B706D6-CD6C-4A2F-97AE-A4CEDB2B0636}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C455D228-C865-4D4A-8661-D4B01D114BC3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C455D228-C865-4D4A-8661-D4B01D114BC3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C455D228-C865-4D4A-8661-D4B01D114BC3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C455D228-C865-4D4A-8661-D4B01D114BC3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A8AFF98E-4312-46C5-8075-4D3ECF164153}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A8AFF98E-4312-46C5-8075-4D3ECF164153}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A8AFF98E-4312-46C5-8075-4D3ECF164153}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A8AFF98E-4312-46C5-8075-4D3ECF164153}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

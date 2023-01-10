@@ -1,0 +1,34 @@
+﻿using System.Collections.Immutable;
+using Telegram.Bot.Types.ReplyMarkups;
+using TgUI.Entity;
+
+namespace TgUI.View;
+
+public class ViewHelper
+{
+    public class ButtonBuilder
+    {
+        public static ButtonBuilderWith Create()
+        {
+            return new ButtonBuilderWith();
+        }
+    }
+    
+    public class ButtonBuilderWith
+    {
+        private List<InlineKeyboardButton> _buttons = new List<InlineKeyboardButton>();
+
+        public ButtonBuilderWith Add(String text, String callbackData)
+        {
+            InlineKeyboardButton button = new InlineKeyboardButton(text);
+            button.CallbackData = callbackData;
+            _buttons.Add(button);
+            return this;
+        }
+
+        public InlineKeyboardMarkup Build()
+        {
+            return new InlineKeyboardMarkup(_buttons);
+        }
+    }
+}
