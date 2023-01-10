@@ -1,5 +1,4 @@
-﻿using System.ComponentModel;
-using System.Reflection;
+﻿using System.Reflection;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using TgUI.Attributes;
@@ -18,9 +17,9 @@ public class ViewModel : State
             object[] attributesArray = methodInfo.GetCustomAttributes(true);
             foreach (var attribute in attributesArray)
             {
-                if (attribute is CallBackAttribute)
+                if (attribute is CallbackAttribute)
                 {
-                    _callbackRepository.Add(((CallBackAttribute)attribute).Trigger,
+                    _callbackRepository.Add(((CallbackAttribute)attribute).Trigger,
                         update => methodInfo.Invoke(this, new[] { update }));
                 }
             }

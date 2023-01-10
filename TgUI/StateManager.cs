@@ -7,11 +7,10 @@ namespace TgUI;
 
 public class StateManager
 {
-    private Dictionary<Type, IView> _viewRepository = new Dictionary<Type, IView>();
-
     private SessionManager _sessionManager;
     private TelegramBotClient _telegramBotClient { get; set; }
 
+    [Inject] private DependencyManager _dependencyManager { get; set; }
 
     public StateManager(TelegramBotClient telegramBotClient)
     {
@@ -20,6 +19,8 @@ public class StateManager
 
     internal void PushState(SessionContext context, State state)
     {
+        _dependencyManager.InjectDependencies(state);
+        
         state.SetContext(context);
         state._stateManager = this;
 
@@ -35,17 +36,12 @@ public class StateManager
 
         context.CurrentState.Initialize();
         DisplayView(context, state);
-        
-        /** if (state.ParentState != null)
-        {
-            UpdateViewMessage(GetView(state.ParentState), context, state.ParentState, true);
-        } **/
     }
 
 
     internal void DisplayView(SessionContext context, State state)
     {
-        var view = GetView(state);
+        var view = _dependencyManager.GetView(state);
 
         if (state.MessageId == null)
         {
@@ -94,26 +90,5 @@ public class StateManager
 
         context.CurrentState = context.CurrentState.ParentState;
     }
-
-    private IView GetView(State state)
-    {
-        if (!_viewRepository.ContainsKey(state.GetType()))
-        {
-            System.Attribute[] attrs = System.Attribute.GetCustomAttributes(state.GetType());
-            foreach (System.Attribute attr in attrs)
-            {
-                if (attr is ViewAttribute)
-                {
-                    ViewAttribute attribute = (ViewAttribute)attr;
-                    var viewType = attribute.ViewType;
-                    if (!_viewRepository.ContainsKey(viewType))
-                    {
-                        _viewRepository.Add(state.GetType(), (IView)Activator.CreateInstance(viewType));
-                    }
-                }
-            }
-        }
-
-        return _viewRepository[state.GetType()];
-    }
+    
 }

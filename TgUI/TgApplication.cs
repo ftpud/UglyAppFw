@@ -1,7 +1,6 @@
 ﻿using Telegram.Bot;
 using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
 using TgUI.Entity;
 
 namespace TgUI;
@@ -13,12 +12,16 @@ public class TgApplication
     private SessionManager _sessionManager;
     private StateManager _stateManager;
     
+    private DependencyManager _dependencyManager;
+    
     public TgApplication(String token, Type startingState)
     {
         _telegramBotClient = new TelegramBotClient(token);
         _startingState = startingState;
         _sessionManager = new SessionManager();
         _stateManager = new StateManager(_telegramBotClient);
+        _dependencyManager = new DependencyManager();
+        _dependencyManager.InjectDependencies(_stateManager);
     }
 
     public void Start()
@@ -66,8 +69,8 @@ public class TgApplication
 
         context.CurrentState.Update(update);
         
-        // ???
-        if (update.Message != null)
+        
+        if (context.CurrentState.RemoveUserMessagesPolicyEnabled && update.Message != null)
         {
             _telegramBotClient.DeleteMessageAsync(userId, update.Message.MessageId);
         }

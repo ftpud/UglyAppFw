@@ -1,10 +1,9 @@
-﻿using Telegram.Bot.Types;
-using Telegram.Bot.Types.Enums;
+﻿using TgUI.Attributes;
 using TgUI.Entity;
 
 namespace TgUIForm.Elements;
 
-[TgUI.Attributes.View(typeof(UiPickerDialogView))]
+[BindView(typeof(UiPickerDialogView))]
 public class UiPickerDialog : ViewModel
 {
     internal String Text;

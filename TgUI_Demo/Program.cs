@@ -1,7 +1,7 @@
 ﻿using TgUI;
 using TgUI_Demo.ViewModel;
 
-Console.WriteLine("Hello, World!");
-TgApplication tgApplication = new TgApplication(File.ReadAllText("token.txt"), typeof(TestViewModel));
+Console.WriteLine("Todo list Example");
+TgApplication tgApplication = new TgApplication(File.ReadAllText("token.txt"), typeof(MainPageViewModel));
 tgApplication.Start();
 Console.ReadLine();

@@ -3,7 +3,7 @@
 namespace TgUI.Attributes;
 
 [System.AttributeUsage(System.AttributeTargets.Method)]
-public class CallBackAttribute : Attribute
+public class CallbackAttribute : Attribute
 {
     public String Trigger { get; set; }
 

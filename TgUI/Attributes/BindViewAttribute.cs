@@ -3,11 +3,11 @@
 namespace TgUI.Attributes;
 
 [System.AttributeUsage(System.AttributeTargets.Class)]
-public class ViewAttribute : Attribute
+public class BindViewAttribute : Attribute
 {
     public Type ViewType { get; set; }
 
-    public ViewAttribute(Type view)
+    public BindViewAttribute(Type view)
     {
         ViewType = view;
     }

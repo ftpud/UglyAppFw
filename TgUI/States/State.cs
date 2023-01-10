@@ -4,6 +4,10 @@ namespace TgUI.Entity;
 
 public class State
 {
+
+    // Public properties 
+    public bool RemoveUserMessagesPolicyEnabled { get; set; } = true;
+    
     public State? ParentState { get; set; }
     protected SessionContext Context { get; set; }
     internal StateManager _stateManager { get; set; }

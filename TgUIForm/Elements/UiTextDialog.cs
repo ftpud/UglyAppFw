@@ -1,10 +1,11 @@
 ﻿using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
+using TgUI.Attributes;
 using TgUI.Entity;
 
 namespace TgUIForm.Elements;
 
-[TgUI.Attributes.View(typeof(UiTextDialogView))]
+[BindView(typeof(UiTextDialogView))]
 public class UiTextDialog : ViewModel
 {
     internal String Text;

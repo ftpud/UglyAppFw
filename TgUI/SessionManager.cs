@@ -1,7 +1,5 @@
-﻿using Telegram.Bot;
-using TgUI.Attributes;
-using TgUI.Entity;
-using TgUI.View;
+﻿using TgUI.Entity;
+
 
 namespace TgUI;
 

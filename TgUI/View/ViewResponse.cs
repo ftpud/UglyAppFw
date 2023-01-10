@@ -1,7 +1,4 @@
-﻿using Telegram.Bot.Types.Enums;
-using Telegram.Bot.Types.ReplyMarkups;
-
-namespace TgUI.View;
+﻿namespace TgUI.View;
 
 public class ViewResponse
 {
