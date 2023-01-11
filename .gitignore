@@ -1,8 +1,10 @@
 /TgUI_Demo/token.txt
+/UglyDemo/token.txt
 .idea/
-TgUI/bin/
-TgUI/obj/
-TgUIForm/bin/
-TgUIForm/obj/
-TgUI_Demo/bin/
-TgUI_Demo/obj/
+/UglyAppFramework/bin/
+/UglyAppFramework/obj/
+/UglyTgApplication/bin/
+/UglyTgApplication/obj/
+/UglyDemo/bin/
+/UglyDemo/obj/
+/UglyTgApplication/obj
