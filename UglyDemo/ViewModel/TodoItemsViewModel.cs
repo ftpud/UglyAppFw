@@ -21,7 +21,7 @@ public class TodoItemsViewModel : UglyTgApplication.States.ViewModel
             GetDictionaryModel(), (s, o) =>
             {
                 _repository.RemoveItem((TodoItem)o);
-                PropertyChanged();
+                UpdateView();
             }
         ));
     }
@@ -39,7 +39,7 @@ public class TodoItemsViewModel : UglyTgApplication.States.ViewModel
             GetDictionaryModel(), (s, o) =>
             {
                 ((TodoItem)o).IsFinished = !((TodoItem)o).IsFinished;
-                PropertyChanged();
+                UpdateView();
             }
         ));
     }
@@ -57,7 +57,7 @@ public class TodoItemsViewModel : UglyTgApplication.States.ViewModel
             IsFinished = false,
             TelegramUserId = Context.CurrentUserId.Identifier.Value
         });
-        PropertyChanged();
+        UpdateView();
     }
 
     private Dictionary<string, Object> GetDictionaryModel()

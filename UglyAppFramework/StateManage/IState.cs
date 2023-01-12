@@ -11,6 +11,8 @@ public interface IState
     public void Initialize();
 
     public void Unload();
+    
+    public void Activate();
 
     public void SetContext(ISessionContext context);
     

@@ -6,6 +6,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UglyDemo", "UglyDemo\UglyDe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UglyTgApplication", "UglyTgApplication\UglyTgApplication.csproj", "{DF09D869-7088-47E3-844F-FEE37FDCE9BB}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Tests", "Tests\Tests.csproj", "{88DE0EA9-FD45-44FB-8117-1433E869CDD5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{DF09D869-7088-47E3-844F-FEE37FDCE9BB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DF09D869-7088-47E3-844F-FEE37FDCE9BB}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DF09D869-7088-47E3-844F-FEE37FDCE9BB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{88DE0EA9-FD45-44FB-8117-1433E869CDD5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{88DE0EA9-FD45-44FB-8117-1433E869CDD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{88DE0EA9-FD45-44FB-8117-1433E869CDD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{88DE0EA9-FD45-44FB-8117-1433E869CDD5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

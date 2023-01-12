@@ -32,7 +32,7 @@ public class ViewModel : TgState
         }
     }
 
-    protected void RegisterCallback(String trigger, Action<Update> callback)
+    public void RegisterCallback(String trigger, Action<Update> callback)
     {
         _callbackRepository.Add(trigger, callback);
     }
@@ -55,14 +55,14 @@ public class ViewModel : TgState
     {
     }
 
-    protected void PropertyChanged()
+    public void UpdateView()
     {
         _telegramInteractionManager.DisplayView((SessionContext)GetContext(), this);
     }
 
     public override void Initialize()
     {
-        _telegramInteractionManager.DisplayView((SessionContext)GetContext(), this);
+        UpdateView();
     }
 
     public override void Unload()
@@ -77,7 +77,12 @@ public class ViewModel : TgState
     {
         if (EqualityComparer<T>.Default.Equals(field, value)) return false;
         field = value;
-        PropertyChanged();
+        UpdateView();
         return true;
+    }
+
+    public override void Activate()
+    {
+        UpdateView();
     }
 }

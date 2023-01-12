@@ -29,6 +29,11 @@ public abstract class State : IState
         throw new NotImplementedException();
     }
 
+    public virtual void Activate()
+    {
+        throw new NotImplementedException();
+    }
+
     public virtual void SetContext(ISessionContext context)
     {
         throw new NotImplementedException();

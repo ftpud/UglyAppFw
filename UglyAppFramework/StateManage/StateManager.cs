@@ -33,6 +33,9 @@ public class StateManager
     {
         var currentState = context.GetCurrentState();
         currentState.Unload();
-        context.SetCurrentState(currentState.GetParentState());
+        var newState = currentState.GetParentState();
+        context.SetCurrentState(newState);
+        newState.Activate();
+        
     }
 }

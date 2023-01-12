@@ -84,7 +84,7 @@ public class TelegramInteractionManager
                 {
                     BindViewAttribute attribute = (BindViewAttribute)attr;
                     var viewType = attribute.ViewType;
-                    return (IView) DependencyManager.GetDependencyForType(viewType);
+                    return (IView) DependencyManager.GetDependencyInstance(viewType, new InjectAttribute() );
                 }
             }
 
