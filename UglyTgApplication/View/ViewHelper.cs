@@ -10,7 +10,13 @@ public static class ViewHelper
         {
             return new ButtonBuilderWith();
         }
+
+        public static InlineKeyboardMarkup BuildBackButton(String text = "Back")
+        {
+            return Create().Add(text, "/back").Build();
+        }
     }
+    
     
     public class ButtonBuilderWith
     {
@@ -24,6 +30,11 @@ public static class ViewHelper
             button.CallbackData = callbackData;
             _buttons.Add(button);
             return this;
+        }
+
+        public ButtonBuilderWith AddBackButton(String text = "Back")
+        {
+            return Add(text, "/back");
         }
 
         public InlineKeyboardMarkup Build()

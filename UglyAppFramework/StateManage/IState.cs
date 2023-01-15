@@ -1,6 +1,4 @@
-﻿using System.Net;
-
-namespace UglyAppFramework.StateManage;
+﻿namespace UglyAppFramework.StateManage;
 
 public interface IState
 {

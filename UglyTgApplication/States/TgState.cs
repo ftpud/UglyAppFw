@@ -13,7 +13,7 @@ public class TgState : State
     private ISessionContext _sessionContext = new SessionContext();
 
     public SessionContext Context => (SessionContext)GetContext();
-    
+
     public override void Initialize()
     {
         

@@ -2,6 +2,7 @@
 using UglyTgApplication.Entity;
 
 namespace UglyTgApplication;
+
 [Managed]
 public class SessionManager
 {

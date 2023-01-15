@@ -77,17 +77,17 @@ public class TelegramInteractionManager
     private IView GetView(State state)
     {
         
-            System.Attribute[] attrs = System.Attribute.GetCustomAttributes(state.GetType());
-            foreach (System.Attribute attr in attrs)
+        System.Attribute[] attrs = System.Attribute.GetCustomAttributes(state.GetType());
+        foreach (System.Attribute attr in attrs)
+        {
+            if (attr is BindViewAttribute)
             {
-                if (attr is BindViewAttribute)
-                {
-                    BindViewAttribute attribute = (BindViewAttribute)attr;
-                    var viewType = attribute.ViewType;
-                    return (IView) DependencyManager.GetDependencyInstance(viewType, new InjectAttribute() );
-                }
+                BindViewAttribute attribute = (BindViewAttribute)attr;
+                var viewType = attribute.ViewType;
+                return (IView) DependencyManager.GetDependencyInstance(viewType, new InjectAttribute() );
             }
+        }
 
-            throw new Exception("View is expected to be attached to ViewModel");
+        throw new Exception("View is expected to be attached to ViewModel");
     }
 }

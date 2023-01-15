@@ -9,6 +9,7 @@ public class SessionContext : ISessionContext
     public TgState CurrentState { get; set; }
     public ChatId CurrentUserId { get; set; }
     
+    public long UserId => CurrentUserId.Identifier.Value;
 
     public IState GetCurrentState()
     {

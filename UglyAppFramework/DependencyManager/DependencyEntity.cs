@@ -1,6 +1,4 @@
-﻿using System.ComponentModel.Design;
-
-namespace UglyAppFramework.DependencyManager;
+﻿namespace UglyAppFramework.DependencyManager;
 
 public class DependencyEntity
 {

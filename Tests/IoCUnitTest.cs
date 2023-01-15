@@ -7,16 +7,15 @@ namespace Tests;
 
 public class Tests
 {
-
     class TestClass : IUglyLoader
     {
         [Inject(Identifier = "test1")] public ITestItemBase? Test1Instance { get; set; }
         [Inject(Identifier = "test2")] public ITestItemBase? Test2Instance { get; set; }
         [Inject(Identifier = "test1")] public TestItem1? SameRef { get; set; }
         [Inject] public TestItemNoId? NoIdObj { get; set; }
+
         public void Load()
         {
-            
         }
     }
 
