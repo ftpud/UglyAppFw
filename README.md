@@ -1,4 +1,10 @@
-# TgUI
+# UglyAppFw
 Kind of ugly UI framework for creating a telegram bot.
 
-Currently supports isolated multi-user state-based interactions using MVVM architecture.
+Currently supports:
++ Isolated multi-user state-based interactions
++ MVVM architecture
++ DI and IoC contaier 
+
+
+
