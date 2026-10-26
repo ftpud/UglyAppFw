@@ -1,6 +1,7 @@
-﻿using UglyAppFramework.DependencyManager.Attributes;
+using UglyDemo.Models;
+using UglyAppFramework.DependencyManager.Attributes;
 
-namespace UglyDemo.Model;
+namespace UglyDemo.Services;
 
 // In-memory repository
 [Managed]

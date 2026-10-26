@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using UglyAppFramework.DependencyManager.Attributes;
 
 namespace UglyAppFramework.DependencyManager;
@@ -7,6 +7,8 @@ namespace UglyAppFramework.DependencyManager;
 public class DependencyManager
 {
     
+    private readonly object _sync = new();
+
     private List<DependencyEntity> DependencyRepository { get; set; } = new List<DependencyEntity>();
 
     public DependencyManager()
@@ -45,28 +47,32 @@ public class DependencyManager
 
     private void AddDependencyToRepo(DependencyEntity entity)
     {
-        if (!DependencyRepository.Any(e => e.ObjectType == entity.ObjectType && e.Identifier == entity.Identifier))
+        lock (_sync)
         {
-            DependencyRepository.Add(entity);
+            if (!DependencyRepository.Any(e => e.ObjectType == entity.ObjectType && e.Identifier == entity.Identifier))
+                DependencyRepository.Add(entity);
         }
     }
 
     public void InjectDependencies(Object target)
     {
-        InjectDependenciesRecursive(target);
-        InvokePostConstruct(target);
+        lock (_sync)
+        {
+            InjectDependenciesRecursive(target);
+            InvokePostConstruct(target);
+        }
     }
 
     private void InjectDependenciesRecursive(Object target)
     {
-        var targetType = target.GetType();
-        foreach (var fieldInfo in targetType.GetProperties(
-                     BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Public | BindingFlags.Static))
+        for (var targetType = target.GetType(); targetType != null; targetType = targetType.BaseType)
         {
-            var fieldAttribute = (InjectAttribute)fieldInfo.GetCustomAttribute(typeof(InjectAttribute), true);
-            if (fieldAttribute != null)
+            foreach (var property in targetType.GetProperties(BindingFlags.NonPublic | BindingFlags.Instance |
+                         BindingFlags.Public | BindingFlags.DeclaredOnly))
             {
-                fieldInfo.SetValue(target, GetDependencyInstance(fieldInfo.PropertyType, fieldAttribute));
+                var attribute = property.GetCustomAttribute<InjectAttribute>(true);
+                if (attribute != null)
+                    property.SetValue(target, GetDependencyInstance(property.PropertyType, attribute));
             }
         }
     }
@@ -109,21 +115,23 @@ public class DependencyManager
 
     public Object GetDependencyInstance(Type targetType, InjectAttribute attribute)
     {
-        var dependency = GetDependencyEntityFromRepo(targetType, attribute);
-        if (dependency.Scope == DependencyEntity.DependencyScope.Singletone)
+        lock (_sync)
         {
+            var dependency = GetDependencyEntityFromRepo(targetType, attribute);
+            if (dependency.Scope != DependencyEntity.DependencyScope.Singletone)
+                throw new NotImplementedException();
             if (dependency.DependencyInstance == null)
             {
-                var instance = Activator.CreateInstance(dependency.ObjectType);
+                var instance = Activator.CreateInstance(dependency.ObjectType)!;
                 dependency.DependencyInstance = instance;
-                InjectDependencies(instance);
+                try { InjectDependencies(instance); }
+                catch
+                {
+                    dependency.DependencyInstance = null;
+                    throw;
+                }
             }
-
             return dependency.DependencyInstance;
-        }
-        else
-        {
-            throw new NotImplementedException();
         }
     }
 

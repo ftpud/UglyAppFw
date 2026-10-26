@@ -1,21 +1,14 @@
-﻿namespace UglyAppFramework.StateManage;
+namespace UglyAppFramework.StateManage;
 
 public interface IState
 {
-    public void Push(IState state);
-    
-    public void Pop();
-
-    public void Initialize();
-
-    public void Unload();
-    
-    public void Activate();
-
-    public void SetContext(ISessionContext context);
-    
-    public ISessionContext GetContext();
-
-    public IState GetParentState();
-    public void SetParentState(IState state);
+    Task PushAsync(IState state, CancellationToken cancellationToken = default);
+    Task PopAsync(CancellationToken cancellationToken = default);
+    Task InitializeAsync(CancellationToken cancellationToken = default);
+    Task UnloadAsync(CancellationToken cancellationToken = default);
+    Task ActivateAsync(CancellationToken cancellationToken = default);
+    void SetContext(ISessionContext context);
+    ISessionContext GetContext();
+    IState? GetParentState();
+    void SetParentState(IState? state);
 }

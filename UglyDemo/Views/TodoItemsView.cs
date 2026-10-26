@@ -1,11 +1,12 @@
-﻿using UglyAppFramework.DependencyManager.Attributes;
+using UglyFwUI.Rendering;
+using UglyAppFramework.DependencyManager.Attributes;
 using UglyAppFramework.StateManage;
-using UglyDemo.Model;
-using UglyDemo.ViewModel;
+using UglyDemo.Models;
+using UglyDemo.ViewModels;
 using UglyTgApplication.States;
 using UglyTgApplication.View;
 
-namespace UglyDemo.View;
+namespace UglyDemo.Views;
 
 [Managed]
 public class TodoItemsView : IView
@@ -15,7 +16,7 @@ public class TodoItemsView : IView
         var viewModel = (TodoItemsViewModel)genericViewModel;
 
         return new ViewSimpleResponse("Here are some todo items for you:\n" +
-                                      $"{String.Join("\n", viewModel.MyItems.Select(i => Convert(i)))}",
+                                      $"{String.Join("\n", viewModel.MyItems.Where(i => i != null).Select(i => Convert(i!)))}",
             ViewHelper.ButtonBuilder.Create()
                 .Add("Back", "/back")
                 .Add("Add", "/add")
@@ -27,6 +28,6 @@ public class TodoItemsView : IView
 
     private String Convert(TodoItem item)
     {
-        return item.Text + (item.IsFinished ? " [ DONE ]" : "");
+        return HtmlText.Encode(item.Text) + (item.IsFinished ? " [ DONE ]" : "");
     }
 }

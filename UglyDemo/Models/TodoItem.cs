@@ -1,4 +1,4 @@
-﻿namespace UglyDemo.Model;
+namespace UglyDemo.Models;
 
 public class TodoItem
 {

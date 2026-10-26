@@ -1,7 +1,7 @@
-﻿namespace UglyAppFramework.StateManage;
+namespace UglyAppFramework.StateManage;
 
 public interface ISessionContext
 {
-    public IState GetCurrentState();
-    public void SetCurrentState(IState state);
+    IState? GetCurrentState();
+    void SetCurrentState(IState? state);
 }

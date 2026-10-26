@@ -1,41 +1,46 @@
-﻿using UglyAppFramework.DependencyManager.Attributes;
+using UglyAppFramework.DependencyManager.Attributes;
 
 namespace UglyAppFramework.StateManage;
 
 [Managed]
 public class StateManager
 {
-    [Inject]
-    private DependencyManager.DependencyManager _dependencyManager { get; set; }
-    public StateManager()
-    {
-        
-    }
+    [Inject] private DependencyManager.DependencyManager _dependencyManager { get; set; } = null!;
 
-    public void PushState(ISessionContext context, IState state)
+    public async Task PushStateAsync(ISessionContext context, IState state,
+        CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        var parent = context.GetCurrentState();
+        for (var ancestor = parent; ancestor != null; ancestor = ancestor.GetParentState())
+            if (ReferenceEquals(ancestor, state))
+                throw new InvalidOperationException("A state already on the navigation stack cannot be pushed again.");
         _dependencyManager.InjectDependencies(state);
         state.SetContext(context);
-        
-        if (context.GetCurrentState() == null)
+        state.SetParentState(parent);
+        context.SetCurrentState(state);
+        try
         {
-            context.SetCurrentState(state);
+            await state.InitializeAsync(cancellationToken);
         }
-        else
+        catch
         {
-            state.SetParentState(context.GetCurrentState());
-            context.SetCurrentState(state);
+            context.SetCurrentState(parent);
+            // Clean up messages sent before initialization failed, preserving the original error.
+            try { await state.UnloadAsync(CancellationToken.None); }
+            catch { /* The original initialization error is propagated to the caller. */ }
+            throw;
         }
-        state.Initialize();
     }
 
-    public void PopState(ISessionContext context)
+    public async Task PopStateAsync(ISessionContext context, CancellationToken cancellationToken = default)
     {
-        var currentState = context.GetCurrentState();
-        currentState.Unload();
-        var newState = currentState.GetParentState();
-        context.SetCurrentState(newState);
-        newState.Activate();
-        
+        cancellationToken.ThrowIfCancellationRequested();
+        var current = context.GetCurrentState();
+        var parent = current?.GetParentState();
+        if (current == null || parent == null) return;
+        await current.UnloadAsync(cancellationToken);
+        context.SetCurrentState(parent);
+        await parent.ActivateAsync(cancellationToken);
     }
 }

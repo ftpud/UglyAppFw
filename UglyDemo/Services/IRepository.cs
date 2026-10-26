@@ -1,4 +1,5 @@
-﻿namespace UglyDemo.Model;
+using UglyDemo.Models;
+namespace UglyDemo.Services;
 
 public interface IRepository
 {

@@ -1,9 +1,9 @@
-﻿using UglyAppFramework.DependencyManager.Attributes;
+using UglyAppFramework.DependencyManager.Attributes;
 using UglyAppFramework.StateManage;
 using UglyTgApplication.States;
 using UglyTgApplication.View;
 
-namespace UglyDemo.View;
+namespace UglyDemo.Views;
 
 [Managed]
 public class MainPageView : IView
