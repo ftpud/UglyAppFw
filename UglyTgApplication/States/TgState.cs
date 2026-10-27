@@ -7,7 +7,7 @@ namespace UglyTgApplication.States;
 public class TgState : State
 {
     public bool RemoveUserMessagesPolicyEnabled { get; set; } = true;
-    internal List<(int Id, string Fingerprint)> Messages { get; } = new();
+    internal List<(int Id, string Fingerprint, bool IsPhoto, string? Key, string? PhotoHash)> Messages { get; } = new();
     private ISessionContext _sessionContext = new SessionContext();
     public SessionContext Context => (SessionContext)GetContext();
 

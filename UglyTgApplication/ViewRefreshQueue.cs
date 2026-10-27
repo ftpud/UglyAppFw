@@ -38,7 +38,7 @@ public class ViewRefreshQueue
         lock (_sync)
         {
             if (Completion != null) throw new InvalidOperationException("The refresh queue is already running.");
-            Completion = RunAsync(cancellationToken);
+            Completion = Task.WhenAll(Enumerable.Range(0, 4).Select(_ => RunAsync(cancellationToken)));
         }
     }
 
@@ -56,6 +56,8 @@ public class ViewRefreshQueue
             try
             {
                 await _signal.WaitAsync(cancellationToken);
+                // Give rapid party changes a short window to collapse into one render.
+                await Task.Delay(TimeSpan.FromMilliseconds(100), cancellationToken);
                 if (TryTake(out var state)) await RefreshAsync(state, cancellationToken);
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)

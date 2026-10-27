@@ -109,6 +109,84 @@ public class TelegramFrameworkTests
     }
 
     [Test]
+    public async Task PhotosAreTrackedEditedAndReplacedInPageOrder()
+    {
+        using var bot = new Harness();
+        await bot.Send(42, 42, "hello");
+        var model = bot.Model(42, 42);
+        model.ExtraMessage = true;
+        await model.UpdateViewAsync();
+        model.Photo = new byte[] { 1, 2, 3 };
+        await model.UpdateViewAsync();
+        await model.UpdateViewAsync();
+        model.Photo = new byte[] { 4, 5, 6 };
+        await model.UpdateViewAsync();
+        model.Photo = null;
+        await model.UpdateViewAsync();
+        Assert.That(bot.Methods(), Is.EqualTo(new[] { "sendMessage", "sendMessage", "deleteMessage", "deleteMessage",
+            "sendPhoto", "sendMessage", "editMessageMedia", "deleteMessage", "deleteMessage", "sendMessage", "sendMessage" }));
+    }
+
+    [Test]
+    public async Task KeyedMessagesDeleteOnlyRemovedPromptAndRejectItsStaleCallbacks()
+    {
+        using var bot = new Harness();
+        await bot.Send(42, 42, "hello");
+        var model = bot.Model(42, 42);
+        model.Keyed = true;
+        await model.UpdateViewAsync();
+        var header = model.Messages[0].Id;
+        var attack = model.Messages[1].Id;
+        var defense = model.Messages[2].Id;
+        var before = bot.Transport.Calls.Count;
+        model.HideFirstChoice = true;
+        await model.UpdateViewAsync();
+        Assert.That(bot.Transport.Calls.Skip(before).Select(c => c.Method), Is.EqualTo(new[] { "deleteMessage" }));
+        Assert.That(model.Messages.Select(m => m.Id), Is.EqualTo(new[] { header, defense }));
+        await bot.Click(42, 42, "/increment", attack);
+        Assert.That(model.Count, Is.Zero, "A deleted keyboard must not act on the current page");
+        await bot.Click(42, 42, "/increment", defense);
+        Assert.That(model.Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task PhotosReuseFileIdsAndCaptionOnlyChangesAvoidMediaUpload()
+    {
+        using var bot = new Harness();
+        await bot.Send(42, 42, "hello");
+        var first = bot.Model(42, 42);
+        first.Photo = new byte[] { 1, 2, 3 };
+        await first.UpdateViewAsync();
+        first.Bump();
+        await first.UpdateViewAsync();
+        Assert.That(bot.Methods().Last(), Is.EqualTo("editMessageCaption"));
+        await bot.Send(43, 43, "hello");
+        var second = bot.Model(43, 43);
+        second.Photo = new byte[] { 1, 2, 3 };
+        await second.UpdateViewAsync();
+        var photoCalls = bot.Transport.Calls.Where(c => c.Method == "sendPhoto").ToArray();
+        Assert.That(photoCalls, Has.Length.EqualTo(2));
+        Assert.That(photoCalls[1].Body, Does.Contain("cached-photo"));
+    }
+
+    [Test]
+    public async Task InvalidCachedFileIdFallsBackToUpload()
+    {
+        using var bot = new Harness();
+        await bot.Send(42, 42, "hello");
+        var first = bot.Model(42, 42); first.Photo = new byte[] { 1, 2, 3 };
+        await first.UpdateViewAsync();
+        var errors = 0;
+        bot.Transport.Error = method => method == "sendPhoto" && Interlocked.Increment(ref errors) == 1
+            ? "Bad Request: wrong file identifier" : null;
+        await bot.Send(43, 43, "hello");
+        var second = bot.Model(43, 43); second.Photo = new byte[] { 1, 2, 3 };
+        await second.UpdateViewAsync();
+        Assert.That(errors, Is.EqualTo(2));
+        Assert.That(bot.Transport.Calls.Count(c => c.Method == "sendPhoto"), Is.EqualTo(3));
+    }
+
+    [Test]
     public async Task NotModifiedResponseIsHarmlessButOtherErrorsAreNotSwallowed()
     {
         using var bot = new Harness();
@@ -589,7 +667,8 @@ public class TelegramFrameworkTests
             if (BeforeResponse != null) await BeforeResponse(method, token);
             var error = Error?.Invoke(method);
             var result = method is "deleteMessage" or "answerCallbackQuery" ? "true"
-                : "{\"message_id\":" + Interlocked.Increment(ref _messageId) + ",\"date\":0,\"chat\":{\"id\":42,\"type\":\"private\"}}";
+                : "{\"message_id\":" + Interlocked.Increment(ref _messageId) + ",\"date\":0,\"chat\":{\"id\":42,\"type\":\"private\"}" +
+                  (method is "sendPhoto" or "editMessageMedia" ? ",\"photo\":[{\"file_id\":\"cached-photo\",\"file_unique_id\":\"unit\",\"width\":1,\"height\":1}]" : "") + "}";
             return new HttpResponseMessage(error == null ? HttpStatusCode.OK : HttpStatusCode.BadRequest)
             {
                 Content = new StringContent(error == null ? "{\"ok\":true,\"result\":" + result + "}"
@@ -605,6 +684,9 @@ public class TelegramFrameworkTests
         public int ObservedCount { get; private set; }
         public int HookCalls { get; private set; }
         public bool ExtraMessage { get; set; }
+        public bool Keyed { get; set; }
+        public bool HideFirstChoice { get; set; }
+        public byte[]? Photo { get; set; }
         public CounterModel() => RemoveUserMessagesPolicyEnabled = false;
         public void Bump() => Count++;
 
@@ -637,11 +719,18 @@ public class TelegramFrameworkTests
         public ViewResponse Display(IState state)
         {
             var model = (CounterModel)state;
+            if (model.Keyed)
+            {
+                var messages = new List<ResponseData> { new() { Key = "header", text = "header" } };
+                if (!model.HideFirstChoice) messages.Add(new ResponseData { Key = "attack", text = "attack" });
+                messages.Add(new ResponseData { Key = "defense", text = "defense" });
+                return new ViewResponse { ResponseMessages = messages.ToArray() };
+            }
             return new ViewResponse
             {
                 ResponseMessages = model.ExtraMessage
-                    ? new[] { new ResponseData { text = model.Count.ToString() }, new ResponseData { text = "extra" } }
-                    : new[] { new ResponseData { text = model.Count.ToString() } }
+                    ? new[] { new ResponseData { text = model.Count.ToString(), Photo = model.Photo }, new ResponseData { text = "extra" } }
+                    : new[] { new ResponseData { text = model.Count.ToString(), Photo = model.Photo } }
             };
         }
     }

@@ -56,6 +56,37 @@ not found" errors are treated as harmless. Expired/invalid callback-query
 acknowledgements also do not prevent the button action from being dispatched.
 Other errors remain visible.
 
+`UglyTgApp.Load` enables an outbound scheduler shared by the bot: UI operations
+are paced at 25 per second with a burst of 25, and sends also have a per-chat
+budget of one per second with a burst of three. Callback acknowledgements bypass
+this pacing. Telegram 429 responses are retried up to three times after their
+`retry_after` delay, with a shared cooldown. Waiting is cancellable. These budgets
+are per process and are not coordinated across replicas. Offline direct dispatch
+does not enable pacing unless the injected `OutboundScheduler` is enabled.
+
+## Photo responses
+
+`ResponseData.Photo` optionally contains encoded image bytes; `text` is then the
+HTML caption (Telegram allows up to 1024 caption characters). Without `Photo`,
+responses remain text messages. Photo responses support inline keyboards, are
+tracked for cleanup, and are edited when their contents change. Switching a
+response between text and photo removes and re-sends it and later sibling
+messages to preserve page order. Prepare image bytes before rendering: views
+remain pure and should not perform file or network I/O.
+Unchanged photo bytes use caption-only edits. The transport caches up to 256
+Telegram file IDs by content hash in memory, clearing them on `Load`; an invalid
+cached file ID falls back to uploading the image again.
+
+## Keyed messages
+
+By default, page messages are matched by position. For pages with independently
+removable messages, set a unique non-empty `ResponseData.Key` on every response
+in the page. Removing a key deletes that exact message and retains other message
+IDs. New or reordered keys may require re-sending a suffix because Telegram
+cannot insert messages before existing ones. Do not mix keyed and unkeyed
+responses in a page. A callback from a deleted message is ignored when the focused
+page is keyed, so a stale button cannot act on a later version of that page.
+
 ## Push modes
 
 `PushAsync(state, mode, token)` takes a `PushMode`; `PushAsync(state, token)` uses `Replace`.
@@ -145,8 +176,9 @@ To push a change to other users (chat rooms, shared boards), call
 `viewRefreshQueue.Request(viewModel)` from any handler. Inject the `[Managed]`
 `ViewRefreshQueue` into a service. Never await another session's render inside
 your own handler, because session locks would deadlock. The queue is started by
-`UglyTgApp.Load`. It coalesces duplicate requests and renders each page under its
-session lock, only if that page is still the session's current state. It logs and
+`UglyTgApp.Load`. Four workers coalesce duplicate requests over a short 100 ms
+window and render each page under its session lock if the page is still visible.
+It logs and
 skips failures, and stops on shutdown. Offline tests call
 `await queue.ProcessPendingAsync()` to drain it deterministically. Unsubscribe
 pages in `UnloadAsync` so popped pages are not kept alive.

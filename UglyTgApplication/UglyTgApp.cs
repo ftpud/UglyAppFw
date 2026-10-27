@@ -31,6 +31,7 @@ public class UglyTgApp : IUglyLoader
     [Inject] private SessionManager SessionManager { get; set; } = null!;
     [Inject] private StateManager StateManager { get; set; } = null!;
     [Inject] private TelegramInteractionManager TelegramInteractionManager { get; set; } = null!;
+    [Inject] private OutboundScheduler OutboundScheduler { get; set; } = null!;
     [Inject] private ViewRefreshQueue ViewRefreshQueue { get; set; } = null!;
     [Inject] private UglyAppFramework.DependencyManager.DependencyManager DependencyManager { get; set; } = null!;
 
@@ -48,6 +49,7 @@ public class UglyTgApp : IUglyLoader
 
     public void Load()
     {
+        OutboundScheduler.Enabled = true;
         TelegramInteractionManager.Load(_token);
         if (_messageStore != null) TelegramInteractionManager.MessageStore = _messageStore;
         TelegramInteractionManager._telegramBotClient.StartReceiving(HandleUpdateAsync, HandleErrorAsync,
@@ -80,6 +82,11 @@ public class UglyTgApp : IUglyLoader
                 await StateManager.PushStateAsync(context, (TgState)Activator.CreateInstance(_startingState)!, cancellationToken);
             }
             var state = Route(context, update);
+            if (state == null)
+            {
+                if (update.CallbackQuery != null) await AnswerCallbackAsync(botClient, update.CallbackQuery, null, cancellationToken);
+                return;
+            }
             var blocked = update.CallbackQuery != null && StateManager.IsBlocked(context, state);
             if (update.CallbackQuery != null)
                 await AnswerCallbackAsync(botClient, update.CallbackQuery, blocked ? BlockedInputNotice : null, cancellationToken);
@@ -92,21 +99,25 @@ public class UglyTgApp : IUglyLoader
 
     // A button goes to the visible state that owns its message (stale keyboards go to the focused
     // state, which ignores unknown callbacks); typed text goes to the focused state.
-    private TgState Route(SessionContext context, Update update)
+    private TgState? Route(SessionContext context, Update update)
     {
         if (update.CallbackQuery?.Message is { } clicked)
             foreach (var visible in StateManager.GetVisibleStates(context).Cast<TgState>())
                 if (visible.Messages.Any(m => m.Id == clicked.MessageId))
                     return visible;
-        return (TgState)StateManager.GetFocusedState(context)!;
+        var focused = (TgState)StateManager.GetFocusedState(context)!;
+        // Deleted keyed messages cannot safely route their old buttons to a new round.
+        if (update.CallbackQuery?.Message != null && focused.Messages.Any(m => m.Key != null)) return null;
+        return focused;
     }
 
-    private static async Task AnswerCallbackAsync(ITelegramBotClient botClient, CallbackQuery query, string? text,
+    private async Task AnswerCallbackAsync(ITelegramBotClient botClient, CallbackQuery query, string? text,
         CancellationToken cancellationToken)
     {
         try
         {
-            await botClient.AnswerCallbackQueryAsync(query.Id, text, cancellationToken: cancellationToken);
+            await OutboundScheduler.ExecuteAsync(ct => botClient.AnswerCallbackQueryAsync(query.Id, text, cancellationToken: ct),
+                null, false, cancellationToken, pace: false);
         }
         catch (ApiRequestException ex) when (ex.ErrorCode == 400 &&
             (ex.Message.Contains("query is too old", StringComparison.OrdinalIgnoreCase) ||
