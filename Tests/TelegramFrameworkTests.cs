@@ -194,7 +194,8 @@ public class TelegramFrameworkTests
                 Message = new Message { Chat = new Chat { Id = 42 } }
             }
         }, CancellationToken.None));
-        Assert.That(bot.Transport.Calls.Any(c => c.Method == "sendMessage"), Is.False);
+        // Acknowledged after routing (so blocked clicks can show a notice); the action is not run.
+        Assert.That(bot.Model(42, 42).Count, Is.Zero);
     }
 
     [Test]
@@ -212,9 +213,10 @@ public class TelegramFrameworkTests
             using var restarted = new Harness(new JsonUiMessageStore(directory));
             await restarted.Send(42, 42, "hello");
             Assert.That(restarted.Transport.Calls.Select(c => c.Method),
-                Is.EqualTo(new[] { "deleteMessage", "deleteMessage", "deleteMessage", "sendMessage" }));
+                Is.EqualTo(new[] { "deleteMessage", "deleteMessage", "sendMessage" }),
+                "only the visible child's two messages were left; the covered parent was already hidden");
             await restarted.Send(42, 42, "/increment");
-            Assert.That(restarted.Transport.Calls.Count(c => c.Method == "deleteMessage"), Is.EqualTo(3));
+            Assert.That(restarted.Transport.Calls.Count(c => c.Method == "deleteMessage"), Is.EqualTo(2));
             Assert.That(restarted.Model(42, 42).Count, Is.EqualTo(1));
             var remaining = await new JsonUiMessageStore(directory).GetAsync(123456, 42, 42);
             Assert.That(remaining.Count, Is.EqualTo(1));
@@ -297,12 +299,148 @@ public class TelegramFrameworkTests
         await child.UpdateViewAsync();
         await child.PopAsync();
         Assert.That(bot.Context(42, 42).CurrentState, Is.SameAs(root));
-        Assert.That(bot.Transport.Calls.Count(c => c.Method == "deleteMessage"), Is.EqualTo(2));
+        // One for the hidden root, two for the child's messages.
+        Assert.That(bot.Transport.Calls.Count(c => c.Method == "deleteMessage"), Is.EqualTo(3));
         await bot.Sessions.ResetSessionAsync(42, 42);
         Assert.That(bot.Context(42, 42).CurrentState, Is.Null);
         await bot.Send(42, 42, "/increment");
         Assert.That(bot.Model(42, 42), Is.Not.SameAs(root));
         Assert.That(bot.Model(42, 42).Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public async Task OnlyTheTopPageIsVisibleAndPopRecoversTheParentWithItsState()
+    {
+        using var bot = new Harness();
+        await bot.Send(42, 42, "/increment");
+        var root = bot.Model(42, 42);
+        const int rootMessage = 1; // the first message sent by the fake transport
+        bot.Transport.Calls.Clear();
+
+        var child = new CounterModel();
+        await root.PushAsync(child);
+        Assert.That(bot.Transport.Calls.Select(c => c.Method), Is.EqualTo(new[] { "sendMessage", "deleteMessage" }),
+            "the child is shown before the parent is hidden");
+        Assert.That(JsonDocument.Parse(bot.Transport.Calls.Last().Body).RootElement.GetProperty("message_id").GetInt32(),
+            Is.EqualTo(rootMessage));
+
+        root.Bump(); // covered pages keep their state and may change
+        bot.Transport.Calls.Clear();
+        await child.PopAsync();
+        Assert.That(bot.Transport.Calls.Select(c => c.Method), Is.EqualTo(new[] { "deleteMessage", "sendMessage" }));
+        Assert.That(JsonDocument.Parse(bot.Transport.Calls.Last().Body).RootElement.GetProperty("text").GetString(),
+            Is.EqualTo("2"));
+    }
+
+    [Test]
+    public async Task PanelStaysBesideItsParentAndClicksReachTheOwnerOfTheMessage()
+    {
+        using var bot = new Harness();
+        await bot.Send(42, 42, "hello");
+        var root = bot.Model(42, 42);
+        var panel = new CounterModel();
+        bot.Transport.Calls.Clear();
+        await root.PushAsync(panel, PushMode.Panel);
+        Assert.That(bot.Methods(), Is.EqualTo(new[] { "sendMessage" }), "nothing is hidden");
+        Assert.That(bot.Sessions.GetCurrentContext(42, 42).CurrentState, Is.SameAs(panel));
+
+        await bot.Click(42, 42, "/increment", root.Messages.Single().Id);
+        await bot.Click(42, 42, "/increment", panel.Messages.Single().Id);
+        await bot.Click(42, 42, "/increment", panel.Messages.Single().Id);
+        Assert.That((root.Count, panel.Count), Is.EqualTo((1, 2)));
+        await bot.Send(42, 42, "/increment");
+        Assert.That(root.Count, Is.EqualTo(2), "typed input skips panels");
+
+        var nested = new CounterModel();
+        await panel.PushAsync(nested, PushMode.Panel);
+        bot.Transport.Calls.Clear();
+        await panel.PopAsync();
+        Assert.That(bot.Methods(), Is.EqualTo(new[] { "deleteMessage", "deleteMessage" }),
+            "popping a panel closes it and the panels above it; the root stays as it is");
+        Assert.That(bot.Sessions.GetCurrentContext(42, 42).CurrentState, Is.SameAs(root));
+    }
+
+    [Test]
+    public async Task ModalBlocksPagesBehindItTakesTextAndLeavesThemInPlace()
+    {
+        using var bot = new Harness();
+        await bot.Send(42, 42, "hello");
+        var root = bot.Model(42, 42);
+        var modal = new CounterModel();
+        await root.PushAsync(modal, PushMode.Modal);
+        bot.Transport.Calls.Clear();
+
+        await bot.Click(42, 42, "/increment", root.Messages.Single().Id);
+        Assert.That(root.Count, Is.Zero);
+        var notice = bot.Transport.Calls.Single(c => c.Method == "answerCallbackQuery").Body;
+        Assert.That(JsonDocument.Parse(notice).RootElement.GetProperty("text").GetString(),
+            Is.EqualTo(bot.App.BlockedInputNotice));
+
+        await bot.Send(42, 42, "/increment");
+        Assert.That((root.Count, modal.Count), Is.EqualTo((0, 1)));
+
+        // Refreshes still reach the page behind the modal.
+        root.Bump();
+        bot.Refresh.Request(root);
+        await bot.Refresh.ProcessPendingAsync();
+        Assert.That(bot.Transport.Calls.Last().Method, Is.EqualTo("editMessageText"));
+
+        bot.Transport.Calls.Clear();
+        await modal.PopAsync();
+        Assert.That(bot.Methods(), Is.EqualTo(new[] { "deleteMessage" }), "the root was never hidden, so nothing is re-sent");
+        await bot.Click(42, 42, "/increment", root.Messages.Single().Id);
+        Assert.That(root.Count, Is.EqualTo(2));
+    }
+
+    [Test]
+    public async Task ReplaceHidesEveryVisiblePageAndPopRestoresThemInOrder()
+    {
+        using var bot = new Harness();
+        await bot.Send(42, 42, "hello");
+        var root = bot.Model(42, 42);
+        var panel = new CounterModel();
+        await root.PushAsync(panel, PushMode.Panel);
+        var page = new CounterModel();
+        bot.Transport.Calls.Clear();
+        await panel.PushAsync(page);
+        Assert.That(bot.Methods(), Is.EqualTo(new[] { "sendMessage", "deleteMessage", "deleteMessage" }));
+
+        root.Bump();
+        bot.Transport.Calls.Clear();
+        await page.PopAsync();
+        Assert.That(bot.Methods(), Is.EqualTo(new[] { "deleteMessage", "sendMessage", "sendMessage" }));
+        var texts = bot.Transport.Calls.Where(c => c.Method == "sendMessage")
+            .Select(c => JsonDocument.Parse(c.Body).RootElement.GetProperty("text").GetString());
+        Assert.That(texts, Is.EqualTo(new[] { "1", "0" }), "root first, then its panel");
+    }
+
+    [Test]
+    public async Task StatesCreatedDuringAnUpdateCanUseInjectedServicesInTheirConstructor()
+    {
+        using var bot = new Harness();
+        await bot.Send(42, 42, "hello");
+        InjectedAtConstruction? created = null;
+        bot.Model(42, 42).RegisterCallback("/make", async (_, token) =>
+        {
+            created = new InjectedAtConstruction();
+            await bot.Model(42, 42).PushAsync(created, token);
+        });
+        await bot.Send(42, 42, "/make");
+        Assert.That(created!.SeenInConstructor, Is.Not.Null);
+        Assert.That(created.PostConstructCalls, Is.EqualTo(1), "pushing does not inject a second time");
+        Assert.That(DependencyManager.Current, Is.Null, "the scope ends with the update");
+        Assert.That(new InjectedAtConstruction().SeenInConstructor, Is.Null);
+    }
+
+    [Test]
+    public void PrototypesAreFreshAndSingleImplementationsResolveByInterface()
+    {
+        var dependencies = new DependencyManager();
+        var first = dependencies.GetDependencyInstance(typeof(PrototypeService), new InjectAttribute());
+        var second = dependencies.GetDependencyInstance(typeof(PrototypeService), new InjectAttribute());
+        Assert.That(first, Is.Not.SameAs(second));
+        Assert.That(((PrototypeService)first).Singleton, Is.SameAs(((PrototypeService)second).Singleton));
+        Assert.That(dependencies.GetDependencyInstance(typeof(IGreeter), new InjectAttribute()), Is.TypeOf<Greeter>());
     }
 
     [Test]
@@ -424,6 +562,16 @@ public class TelegramFrameworkTests
                     MessageId = 99, Chat = new Chat { Id = chat }, From = new User { Id = user }, Text = text
                 }
             }, token);
+        public Task Click(long chat, long user, string data, int messageId) =>
+            App.HandleUpdateAsync(Client, new Update
+            {
+                CallbackQuery = new CallbackQuery
+                {
+                    Id = "button", From = new User { Id = user }, Data = data,
+                    Message = new Message { MessageId = messageId, Chat = new Chat { Id = chat } }
+                }
+            }, CancellationToken.None);
+        public string[] Methods() => Transport.Calls.Select(c => c.Method).ToArray();
         public void Dispose() => _http.Dispose();
     }
 
@@ -521,4 +669,24 @@ public class TelegramFrameworkTests
 
     [Managed]
     public class ConcurrentService { }
+
+    public interface IGreeter { }
+
+    [Managed]
+    public class Greeter : IGreeter { }
+
+    [Managed(Scope = DependencyEntity.DependencyScope.Prototype)]
+    public class PrototypeService
+    {
+        [Inject] public ConcurrentService Singleton { get; set; } = null!;
+    }
+
+    public class InjectedAtConstruction : CounterModel
+    {
+        [Inject] private ConcurrentService Service { get; set; } = null!;
+        public ConcurrentService? SeenInConstructor { get; }
+        public int PostConstructCalls { get; private set; }
+        public InjectedAtConstruction() => SeenInConstructor = Service;
+        [PostConstruct] public void Constructed() => PostConstructCalls++;
+    }
 }

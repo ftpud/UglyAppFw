@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using UglyAppFramework.DependencyManager.Attributes;
 
 namespace UglyAppFramework.DependencyManager;
@@ -7,7 +8,13 @@ namespace UglyAppFramework.DependencyManager;
 public class DependencyManager
 {
     
+    private static readonly AsyncLocal<DependencyManager?> CurrentScope = new();
     private readonly object _sync = new();
+    // Objects are injected once, whether on construction (scope) or later (e.g. on push).
+    private readonly ConditionalWeakTable<object, object> _injected = new();
+
+    // The manager whose scope encloses the running code, if any. See Enter.
+    public static DependencyManager? Current => CurrentScope.Value;
 
     private List<DependencyEntity> DependencyRepository { get; set; } = new List<DependencyEntity>();
 
@@ -27,8 +34,21 @@ public class DependencyManager
         {
             LoadDependenciesFromAssembly(assembly);
         }
+    }
 
-        Console.WriteLine("Dependencies loaded");
+    // Within the returned scope (flows across awaits), new states are injected on construction.
+    public IDisposable Enter()
+    {
+        var previous = CurrentScope.Value;
+        CurrentScope.Value = this;
+        return new Scope(previous);
+    }
+
+    private sealed class Scope : IDisposable
+    {
+        private readonly DependencyManager? _previous;
+        public Scope(DependencyManager? previous) => _previous = previous;
+        public void Dispose() => CurrentScope.Value = _previous;
     }
 
     private void LoadDependenciesFromAssembly(Assembly assembly)
@@ -58,6 +78,8 @@ public class DependencyManager
     {
         lock (_sync)
         {
+            if (_injected.TryGetValue(target, out _)) return;
+            _injected.Add(target, this);
             InjectDependenciesRecursive(target);
             InvokePostConstruct(target);
         }
@@ -104,6 +126,11 @@ public class DependencyManager
         var matchingDependencies = DependencyRepository
             .Where(dependency => (dependency.Identifier != null && dependency.Identifier == attribute.Identifier) ||
                                  (dependency.Identifier == null && dependency.ObjectType == targetType)).ToList();
+        // Fall back to a single concrete implementation of an interface or base type.
+        if (matchingDependencies.Count == 0 && attribute.Identifier == null)
+            matchingDependencies = DependencyRepository
+                .Where(dependency => dependency.Identifier == null && !dependency.ObjectType.IsAbstract &&
+                                     targetType.IsAssignableFrom(dependency.ObjectType)).ToList();
         if (matchingDependencies.Count != 1)
         {
             throw new Exception($"Can't find matching dependency for the type {targetType}. " +
@@ -118,8 +145,12 @@ public class DependencyManager
         lock (_sync)
         {
             var dependency = GetDependencyEntityFromRepo(targetType, attribute);
-            if (dependency.Scope != DependencyEntity.DependencyScope.Singletone)
-                throw new NotImplementedException();
+            if (dependency.Scope == DependencyEntity.DependencyScope.Prototype)
+            {
+                var prototype = Activator.CreateInstance(dependency.ObjectType)!;
+                InjectDependencies(prototype);
+                return prototype;
+            }
             if (dependency.DependencyInstance == null)
             {
                 var instance = Activator.CreateInstance(dependency.ObjectType)!;

@@ -1,4 +1,5 @@
 using UglyAppFramework.DependencyManager.Attributes;
+using UglyAppFramework.StateManage;
 using UglyTgApplication.States;
 
 namespace UglyTgApplication;
@@ -11,6 +12,7 @@ public class ViewRefreshQueue
     private readonly object _sync = new();
     private readonly List<ViewModel> _pending = new();
     private readonly SemaphoreSlim _signal = new(0);
+    [Inject] private StateManager StateManager { get; set; } = null!;
 
     // Set by UglyTgApp.Load while polling; offline callers drain with ProcessPendingAsync.
     public Task? Completion { get; private set; }
@@ -83,14 +85,15 @@ public class ViewRefreshQueue
         }
     }
 
-    private static async Task RefreshAsync(ViewModel state, CancellationToken cancellationToken)
+    private async Task RefreshAsync(ViewModel state, CancellationToken cancellationToken)
     {
         var context = state.Context;
         await context.UpdateLock.WaitAsync(cancellationToken);
         try
         {
-            // Only the visible page is rendered; covered pages render when reactivated.
-            if (ReferenceEquals(context.CurrentState, state))
+            // Only visible pages (including panels and pages behind a modal) are rendered;
+            // hidden pages render when they are shown again.
+            if (StateManager.GetVisibleStates(context).Contains(state))
                 await state.UpdateViewAsync(cancellationToken);
         }
         finally { context.UpdateLock.Release(); }

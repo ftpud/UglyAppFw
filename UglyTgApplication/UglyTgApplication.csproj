@@ -15,6 +15,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <InternalsVisibleTo Include="Tests" />
       <ProjectReference Include="..\UglyAppFramework\UglyAppFramework.csproj" />
     </ItemGroup>
 

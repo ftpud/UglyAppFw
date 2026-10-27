@@ -21,7 +21,7 @@ await navigation, callbacks and rendering; the included ToDo demo and the siblin
 | Previous method | Replacement |
 | --- | --- |
 | `Push(state)` / `Pop()` | `await PushAsync(state, token)` / `await PopAsync(token)` |
-| `Initialize`, `Activate`, `Unload` | Override `Task InitializeAsync`, `ActivateAsync`, `UnloadAsync` |
+| `Initialize`, `Activate`, `Unload` | Override `Task InitializeAsync`, `ActivateAsync`, `DeactivateAsync`, `UnloadAsync` |
 | `Update(update)` / `OnMessage(update)` | `UpdateAsync(update, token)` / override `OnMessageAsync` |
 | `UpdateView()` | `await UpdateViewAsync(token)` |
 | `PushState` / `PopState` | `PushStateAsync` / `PopStateAsync` |
@@ -55,6 +55,51 @@ count. Only Telegram's specific "message is not modified" and "message to delete
 not found" errors are treated as harmless. Expired/invalid callback-query
 acknowledgements also do not prevent the button action from being dispatched.
 Other errors remain visible.
+
+## Push modes
+
+`PushAsync(state, mode, token)` takes a `PushMode`; `PushAsync(state, token)` uses `Replace`.
+
+| Mode | Screen | Input |
+| --- | --- | --- |
+| `Replace` (standard) | The new page replaces everything visible. Hidden pages get `DeactivateAsync` (messages deleted, state kept) and are sent again, in order and with their current state, when it is popped. | The new page |
+| `Panel` | Sent as extra messages after the visible pages, which stay visible and interactive. Has its own lifecycle: `panel.PopAsync()` closes just it (and anything above it). | Its own buttons; typed text keeps going to the page below |
+| `Modal` | Sent after the visible pages, which stay visible (and keep live-updating) but are blocked. When it is popped they are edited in place, not re-sent. | Typed text and its own buttons; clicks on pages behind it get a `BlockedInputNotice` toast |
+
+The visible pages are the top of the stack plus everything below it down to the
+first page pushed with `Replace`. Each button press is routed to the visible page
+that owns the pressed message. Typed text goes to the *focused* page: the topmost
+visible page that is not a panel. `StateManager.GetVisibleStates`,
+`GetFocusedState` and `IsBlocked` expose these rules. `ViewRefreshQueue` renders
+every visible page, including pages behind a modal.
+
+`state.PopAsync()` closes *that* state together with every state above it, then
+activates whatever becomes visible (bottom-up). Popping the root is still a no-op.
+Pages pushed onto the stack always go on top, even when a lower panel pushes them.
+A lower page whose message count grows while a panel is open sends its new
+messages after the panel.
+
+A page may render several messages, each with its own keyboard
+(`ViewResponse.ResponseMessages`). All of them belong to one view model, are
+diffed separately (unchanged messages are not edited) and are hidden and restored
+together.
+
+## Dependency injection
+
+`[Managed]` types are registered from all loaded assemblies. Singletons are the
+default. `[Managed(Scope = DependencyEntity.DependencyScope.Prototype)]` creates a
+fresh, injected instance for every injection point. An `[Inject]` property
+resolves by exact type, by `Identifier`, or else by the single concrete
+`[Managed]` implementation of an interface or base type. Objects are injected
+once; `[PostConstruct]` methods run after their injection.
+
+States are injected when they are constructed. `UglyTgApp` opens a
+`DependencyManager.Enter()` scope for each update, and `State`'s constructor
+injects itself from `DependencyManager.Current`. So a view model created in a
+handler (including the starting state) can use its `[Inject]` services in its
+own constructor. States constructed outside a scope (e.g. directly in tests) are
+injected when pushed, as before. A `[PostConstruct]` method on a state runs
+before the derived constructor body; prefer the constructor there.
 
 ## Sessions and lifecycle
 

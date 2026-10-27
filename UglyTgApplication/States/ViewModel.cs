@@ -58,10 +58,11 @@ public class ViewModel : TgState
     {
         cancellationToken.ThrowIfCancellationRequested();
         var trigger = update.CallbackQuery?.Data ?? update.Message?.Text;
+        var top = Context.CurrentState;
         if (trigger != null && _callbacks.TryGetValue(trigger, out var callback))
             await callback(update, cancellationToken);
-        // A callback may navigate; do not deliver the update to an inactive state.
-        if (Context.CurrentState == null || ReferenceEquals(Context.CurrentState, this))
+        // A callback may navigate; then the update is not delivered to the message hook as well.
+        if (ReferenceEquals(Context.CurrentState, top))
             await OnMessageAsync(update, cancellationToken);
     }
 
@@ -71,7 +72,12 @@ public class ViewModel : TgState
     public override Task InitializeAsync(CancellationToken cancellationToken = default) => UpdateViewAsync(cancellationToken);
     public override Task ActivateAsync(CancellationToken cancellationToken = default) => UpdateViewAsync(cancellationToken);
 
-    public override async Task UnloadAsync(CancellationToken cancellationToken = default)
+    public override Task UnloadAsync(CancellationToken cancellationToken = default) => RemoveViewAsync(cancellationToken);
+
+    // A covered page is hidden; ActivateAsync sends it again (with its current state) when uncovered.
+    public override Task DeactivateAsync(CancellationToken cancellationToken = default) => RemoveViewAsync(cancellationToken);
+
+    private async Task RemoveViewAsync(CancellationToken cancellationToken)
     {
         while (Messages.Count > 0)
         {
