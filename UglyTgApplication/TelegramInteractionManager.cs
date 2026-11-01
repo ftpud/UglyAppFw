@@ -114,8 +114,11 @@ public class TelegramInteractionManager
                 {
                     var chat = context.CurrentChatId.Identifier!.Value;
                     if (isPhoto && state.Messages[i].PhotoHash == photoHash)
-                        await Scheduler.ExecuteAsync(ct => _telegramBotClient.MakeRequestAsync(new EditMessageCaptionAboveRequest(context.CurrentChatId, state.Messages[i].Id)
-                            { Caption = response.text, ParseMode = response.parseMode, ReplyMarkup = response.replyMarkup, ShowCaptionAboveMedia = Above(response) }, ct),
+                        await Scheduler.ExecuteAsync(ct => response.CaptionAboveMedia
+                            ? _telegramBotClient.MakeRequestAsync(new EditMessageCaptionAboveRequest(context.CurrentChatId, state.Messages[i].Id)
+                                { Caption = response.text, ParseMode = response.parseMode, ReplyMarkup = response.replyMarkup, ShowCaptionAboveMedia = true }, ct)
+                            : _telegramBotClient.EditMessageCaptionAsync(context.CurrentChatId, state.Messages[i].Id,
+                                caption: response.text, parseMode: response.parseMode, replyMarkup: response.replyMarkup, cancellationToken: ct),
                             chat, false, cancellationToken);
                     else if (isPhoto)
                         await EditPhotoAsync(context.CurrentChatId, state.Messages[i].Id, response, photoHash!, cancellationToken);
@@ -136,8 +139,6 @@ public class TelegramInteractionManager
             state.Messages.RemoveAt(last);
         }
     }
-
-    private static bool? Above(ResponseData response) => response.CaptionAboveMedia ? true : null;
 
     private string? CachedPhoto(string hash) { lock (_photoSync) return _photoIds.GetValueOrDefault(hash); }
     private void ForgetPhoto(string hash) { lock (_photoSync) _photoIds.Remove(hash); }
@@ -165,8 +166,12 @@ public class TelegramInteractionManager
                 var id = cached ? CachedPhoto(hash) : null;
                 using var stream = id == null ? new MemoryStream(response.Photo!, writable: false) : null;
                 IInputFile input = id == null ? new InputFile(stream!, "card.png") : new InputFileId(id);
+                // Ordinary photos use the library call unchanged; only explicit caption-above requests use the subclass.
+                if (!response.CaptionAboveMedia)
+                    return await _telegramBotClient.SendPhotoAsync(chat, input, caption: response.text,
+                        parseMode: response.parseMode, replyMarkup: response.replyMarkup, cancellationToken: ct);
                 return await _telegramBotClient.MakeRequestAsync(new SendPhotoCaptionAboveRequest(chat, input)
-                    { Caption = response.text, ParseMode = response.parseMode, ReplyMarkup = response.replyMarkup, ShowCaptionAboveMedia = Above(response) }, ct);
+                    { Caption = response.text, ParseMode = response.parseMode, ReplyMarkup = response.replyMarkup, ShowCaptionAboveMedia = true }, ct);
             }, chat.Identifier!.Value, true, token);
         }
         Message message;
@@ -184,7 +189,9 @@ public class TelegramInteractionManager
             var id = cached ? CachedPhoto(hash) : null;
             using var stream = id == null ? new MemoryStream(response.Photo!, writable: false) : null;
             IInputFile input = id == null ? new InputFile(stream!, "card.png") : new InputFileId(id);
-            var media = new InputMediaPhotoCaptionAbove(input) { Caption = response.text, ParseMode = response.parseMode, ShowCaptionAboveMedia = Above(response) };
+            InputMediaPhoto media = response.CaptionAboveMedia
+                ? new InputMediaPhotoCaptionAbove(input) { Caption = response.text, ParseMode = response.parseMode, ShowCaptionAboveMedia = true }
+                : new InputMediaPhoto(input) { Caption = response.text, ParseMode = response.parseMode };
             return await _telegramBotClient.EditMessageMediaAsync(chat, messageId, media, replyMarkup: response.replyMarkup, cancellationToken: ct);
         }, chat.Identifier!.Value, false, token);
         Message message;
