@@ -81,7 +81,7 @@ public class TelegramInteractionManager
             var response = responses[i];
             var isPhoto = response.Photo != null;
             var photoHash = isPhoto ? Convert.ToHexString(SHA256.HashData(response.Photo!)) : null;
-            var fingerprint = JsonSerializer.Serialize(new { response.text, response.parseMode, response.replyMarkup, photo = photoHash });
+            var fingerprint = JsonSerializer.Serialize(new { response.text, response.parseMode, response.replyMarkup, photo = photoHash, above = response.CaptionAboveMedia });
             // Telegram cannot convert a text message into a photo or vice versa. Remove
             // this message and later siblings so re-sends preserve their order.
             if (i < state.Messages.Count && state.Messages[i].IsPhoto != isPhoto)
@@ -114,8 +114,8 @@ public class TelegramInteractionManager
                 {
                     var chat = context.CurrentChatId.Identifier!.Value;
                     if (isPhoto && state.Messages[i].PhotoHash == photoHash)
-                        await Scheduler.ExecuteAsync(ct => _telegramBotClient.EditMessageCaptionAsync(context.CurrentChatId, state.Messages[i].Id,
-                            caption: response.text, parseMode: response.parseMode, replyMarkup: response.replyMarkup, cancellationToken: ct),
+                        await Scheduler.ExecuteAsync(ct => _telegramBotClient.MakeRequestAsync(new EditMessageCaptionAboveRequest(context.CurrentChatId, state.Messages[i].Id)
+                            { Caption = response.text, ParseMode = response.parseMode, ReplyMarkup = response.replyMarkup, ShowCaptionAboveMedia = Above(response) }, ct),
                             chat, false, cancellationToken);
                     else if (isPhoto)
                         await EditPhotoAsync(context.CurrentChatId, state.Messages[i].Id, response, photoHash!, cancellationToken);
@@ -136,6 +136,8 @@ public class TelegramInteractionManager
             state.Messages.RemoveAt(last);
         }
     }
+
+    private static bool? Above(ResponseData response) => response.CaptionAboveMedia ? true : null;
 
     private string? CachedPhoto(string hash) { lock (_photoSync) return _photoIds.GetValueOrDefault(hash); }
     private void ForgetPhoto(string hash) { lock (_photoSync) _photoIds.Remove(hash); }
@@ -161,12 +163,10 @@ public class TelegramInteractionManager
             return await Scheduler.ExecuteAsync(async ct =>
             {
                 var id = cached ? CachedPhoto(hash) : null;
-                if (id != null)
-                    return await _telegramBotClient.SendPhotoAsync(chat, new InputFileId(id), caption: response.text,
-                        parseMode: response.parseMode, replyMarkup: response.replyMarkup, cancellationToken: ct);
-                using var stream = new MemoryStream(response.Photo!, writable: false);
-                return await _telegramBotClient.SendPhotoAsync(chat, new InputFile(stream, "card.png"), caption: response.text,
-                    parseMode: response.parseMode, replyMarkup: response.replyMarkup, cancellationToken: ct);
+                using var stream = id == null ? new MemoryStream(response.Photo!, writable: false) : null;
+                IInputFile input = id == null ? new InputFile(stream!, "card.png") : new InputFileId(id);
+                return await _telegramBotClient.MakeRequestAsync(new SendPhotoCaptionAboveRequest(chat, input)
+                    { Caption = response.text, ParseMode = response.parseMode, ReplyMarkup = response.replyMarkup, ShowCaptionAboveMedia = Above(response) }, ct);
             }, chat.Identifier!.Value, true, token);
         }
         Message message;
@@ -184,7 +184,7 @@ public class TelegramInteractionManager
             var id = cached ? CachedPhoto(hash) : null;
             using var stream = id == null ? new MemoryStream(response.Photo!, writable: false) : null;
             IInputFile input = id == null ? new InputFile(stream!, "card.png") : new InputFileId(id);
-            var media = new InputMediaPhoto(input) { Caption = response.text, ParseMode = response.parseMode };
+            var media = new InputMediaPhotoCaptionAbove(input) { Caption = response.text, ParseMode = response.parseMode, ShowCaptionAboveMedia = Above(response) };
             return await _telegramBotClient.EditMessageMediaAsync(chat, messageId, media, replyMarkup: response.replyMarkup, cancellationToken: ct);
         }, chat.Identifier!.Value, false, token);
         Message message;

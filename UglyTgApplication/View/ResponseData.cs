@@ -12,4 +12,6 @@ public class ResponseData
     public String text { get; set; }
     public ParseMode parseMode { get; set; } = ParseMode.Html;
     public  InlineKeyboardMarkup? replyMarkup { get; set; } = null;
+    // Photo messages only: show the caption above the image (Bot API show_caption_above_media).
+    public bool CaptionAboveMedia { get; set; }
 }

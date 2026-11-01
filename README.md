@@ -73,6 +73,9 @@ tracked for cleanup, and are edited when their contents change. Switching a
 response between text and photo removes and re-sends it and later sibling
 messages to preserve page order. Prepare image bytes before rendering: views
 remain pure and should not perform file or network I/O.
+Set `ResponseData.CaptionAboveMedia` to show the caption above the image
+(Bot API `show_caption_above_media`); it applies to sends, caption-only edits and
+photo replacements, and is omitted from requests when false.
 Unchanged photo bytes use caption-only edits. The transport caches up to 256
 Telegram file IDs by content hash in memory, clearing them on `Load`; an invalid
 cached file ID falls back to uploading the image again.
